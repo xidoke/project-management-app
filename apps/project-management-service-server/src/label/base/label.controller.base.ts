@@ -16,7 +16,11 @@ import * as errors from "../../errors";
 import { Request } from "express";
 import { plainToClass } from "class-transformer";
 import { ApiNestedQuery } from "../../decorators/api-nested-query.decorator";
+import * as nestAccessControl from "nest-access-control";
+import * as defaultAuthGuard from "../../auth/defaultAuth.guard";
 import { LabelService } from "../label.service";
+import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
 import { LabelCreateInput } from "./LabelCreateInput";
 import { Label } from "./Label";
 import { LabelFindManyArgs } from "./LabelFindManyArgs";
@@ -26,10 +30,24 @@ import { IssueLabelFindManyArgs } from "../../issueLabel/base/IssueLabelFindMany
 import { IssueLabel } from "../../issueLabel/base/IssueLabel";
 import { IssueLabelWhereUniqueInput } from "../../issueLabel/base/IssueLabelWhereUniqueInput";
 
+@swagger.ApiBearerAuth()
+@common.UseGuards(defaultAuthGuard.DefaultAuthGuard, nestAccessControl.ACGuard)
 export class LabelControllerBase {
-  constructor(protected readonly service: LabelService) {}
+  constructor(
+    protected readonly service: LabelService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Post()
   @swagger.ApiCreatedResponse({ type: Label })
+  @nestAccessControl.UseRoles({
+    resource: "Label",
+    action: "create",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async createLabel(@common.Body() data: LabelCreateInput): Promise<Label> {
     return await this.service.createLabel({
       data: data,
@@ -43,9 +61,18 @@ export class LabelControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get()
   @swagger.ApiOkResponse({ type: [Label] })
   @ApiNestedQuery(LabelFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "Label",
+    action: "read",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async labels(@common.Req() request: Request): Promise<Label[]> {
     const args = plainToClass(LabelFindManyArgs, request.query);
     return this.service.labels({
@@ -60,9 +87,18 @@ export class LabelControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id")
   @swagger.ApiOkResponse({ type: Label })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Label",
+    action: "read",
+    possession: "own",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async label(
     @common.Param() params: LabelWhereUniqueInput
   ): Promise<Label | null> {
@@ -84,9 +120,18 @@ export class LabelControllerBase {
     return result;
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Patch("/:id")
   @swagger.ApiOkResponse({ type: Label })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Label",
+    action: "update",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async updateLabel(
     @common.Param() params: LabelWhereUniqueInput,
     @common.Body() data: LabelUpdateInput
@@ -116,6 +161,14 @@ export class LabelControllerBase {
   @common.Delete("/:id")
   @swagger.ApiOkResponse({ type: Label })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "Label",
+    action: "delete",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async deleteLabel(
     @common.Param() params: LabelWhereUniqueInput
   ): Promise<Label | null> {
@@ -140,8 +193,14 @@ export class LabelControllerBase {
     }
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id/issueLabels")
   @ApiNestedQuery(IssueLabelFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "IssueLabel",
+    action: "read",
+    possession: "any",
+  })
   async findIssueLabels(
     @common.Req() request: Request,
     @common.Param() params: LabelWhereUniqueInput
@@ -177,6 +236,11 @@ export class LabelControllerBase {
   }
 
   @common.Post("/:id/issueLabels")
+  @nestAccessControl.UseRoles({
+    resource: "Label",
+    action: "update",
+    possession: "any",
+  })
   async connectIssueLabels(
     @common.Param() params: LabelWhereUniqueInput,
     @common.Body() body: IssueLabelWhereUniqueInput[]
@@ -194,6 +258,11 @@ export class LabelControllerBase {
   }
 
   @common.Patch("/:id/issueLabels")
+  @nestAccessControl.UseRoles({
+    resource: "Label",
+    action: "update",
+    possession: "any",
+  })
   async updateIssueLabels(
     @common.Param() params: LabelWhereUniqueInput,
     @common.Body() body: IssueLabelWhereUniqueInput[]
@@ -211,6 +280,11 @@ export class LabelControllerBase {
   }
 
   @common.Delete("/:id/issueLabels")
+  @nestAccessControl.UseRoles({
+    resource: "Label",
+    action: "update",
+    possession: "any",
+  })
   async disconnectIssueLabels(
     @common.Param() params: LabelWhereUniqueInput,
     @common.Body() body: IssueLabelWhereUniqueInput[]
