@@ -16,17 +16,35 @@ import * as errors from "../../errors";
 import { Request } from "express";
 import { plainToClass } from "class-transformer";
 import { ApiNestedQuery } from "../../decorators/api-nested-query.decorator";
+import * as nestAccessControl from "nest-access-control";
+import * as defaultAuthGuard from "../../auth/defaultAuth.guard";
 import { ProjectMemberService } from "../projectMember.service";
+import { AclValidateRequestInterceptor } from "../../interceptors/aclValidateRequest.interceptor";
+import { AclFilterResponseInterceptor } from "../../interceptors/aclFilterResponse.interceptor";
 import { ProjectMemberCreateInput } from "./ProjectMemberCreateInput";
 import { ProjectMember } from "./ProjectMember";
 import { ProjectMemberFindManyArgs } from "./ProjectMemberFindManyArgs";
 import { ProjectMemberWhereUniqueInput } from "./ProjectMemberWhereUniqueInput";
 import { ProjectMemberUpdateInput } from "./ProjectMemberUpdateInput";
 
+@swagger.ApiBearerAuth()
+@common.UseGuards(defaultAuthGuard.DefaultAuthGuard, nestAccessControl.ACGuard)
 export class ProjectMemberControllerBase {
-  constructor(protected readonly service: ProjectMemberService) {}
+  constructor(
+    protected readonly service: ProjectMemberService,
+    protected readonly rolesBuilder: nestAccessControl.RolesBuilder
+  ) {}
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Post()
   @swagger.ApiCreatedResponse({ type: ProjectMember })
+  @nestAccessControl.UseRoles({
+    resource: "ProjectMember",
+    action: "create",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async createProjectMember(
     @common.Body() data: ProjectMemberCreateInput
   ): Promise<ProjectMember> {
@@ -68,9 +86,18 @@ export class ProjectMemberControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get()
   @swagger.ApiOkResponse({ type: [ProjectMember] })
   @ApiNestedQuery(ProjectMemberFindManyArgs)
+  @nestAccessControl.UseRoles({
+    resource: "ProjectMember",
+    action: "read",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async projectMembers(
     @common.Req() request: Request
   ): Promise<ProjectMember[]> {
@@ -99,9 +126,18 @@ export class ProjectMemberControllerBase {
     });
   }
 
+  @common.UseInterceptors(AclFilterResponseInterceptor)
   @common.Get("/:id")
   @swagger.ApiOkResponse({ type: ProjectMember })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "ProjectMember",
+    action: "read",
+    possession: "own",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async projectMember(
     @common.Param() params: ProjectMemberWhereUniqueInput
   ): Promise<ProjectMember | null> {
@@ -135,9 +171,18 @@ export class ProjectMemberControllerBase {
     return result;
   }
 
+  @common.UseInterceptors(AclValidateRequestInterceptor)
   @common.Patch("/:id")
   @swagger.ApiOkResponse({ type: ProjectMember })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "ProjectMember",
+    action: "update",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async updateProjectMember(
     @common.Param() params: ProjectMemberWhereUniqueInput,
     @common.Body() data: ProjectMemberUpdateInput
@@ -193,6 +238,14 @@ export class ProjectMemberControllerBase {
   @common.Delete("/:id")
   @swagger.ApiOkResponse({ type: ProjectMember })
   @swagger.ApiNotFoundResponse({ type: errors.NotFoundException })
+  @nestAccessControl.UseRoles({
+    resource: "ProjectMember",
+    action: "delete",
+    possession: "any",
+  })
+  @swagger.ApiForbiddenResponse({
+    type: errors.ForbiddenException,
+  })
   async deleteProjectMember(
     @common.Param() params: ProjectMemberWhereUniqueInput
   ): Promise<ProjectMember | null> {
